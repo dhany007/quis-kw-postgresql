@@ -42,12 +42,10 @@ func main() {
 
 	// get all employees
 	employees, err := getAllEmployees(db)
-
 	if err != nil {
 		fmt.Println("error: ", err.Error())
 		return
 	}
-
 	for _, employee := range *employees {
 		employee.Print()
 	}
@@ -56,7 +54,6 @@ func main() {
 	employeeID := 1
 	fmt.Println("\nGet Employee ID", employeeID)
 	employee, err := getEmployeeByID(db, employeeID)
-
 	if err != nil {
 		fmt.Println("error: ", err.Error())
 		return
@@ -79,6 +76,17 @@ func main() {
 	fmt.Println("\nUpdated Employee id", employeeID)
 	newEmployee, _ := getEmployeeByID(db, employeeID)
 	newEmployee.Print()
+
+	// delete employee by id
+	employeeID = 2
+
+	err = deleteEmployeeByID(db, employeeID)
+	if err != nil {
+		fmt.Println("error: ", err.Error())
+		return
+	}
+
+	fmt.Printf("employee with id %d deleted\n", employeeID)
 }
 
 func connectDB() (*sql.DB, error) {
@@ -263,6 +271,40 @@ func updateEmployeeByID(db *sql.DB, id int, request *Employee) error {
 		request.Division,
 		id,
 	)
+
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
+
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func deleteEmployeeByID(db *sql.DB, id int) error {
+	_, err := getEmployeeByID(db, id)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		DELETE FROM employees
+		WHERE id=$1
+	`
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(id)
 
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
